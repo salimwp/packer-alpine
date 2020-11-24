@@ -1,0 +1,97 @@
+{
+    "variables": {
+      "iso": "http://dl-cdn.alpinelinux.org/alpine/v3.12/releases/x86_64/alpine-standard-3.12.1-x86_64.iso",
+      "checksum": "17df5aaf6fad99e57767b51f6934ebb799b7e72e8bed8a5f1d4a0639899b7e9b",
+      "username": "root",
+      "password": "vagrant"
+    },
+    "builders": [
+      {
+        "type": "virtualbox-iso",
+        "guest_os_type": "Alpine Linux",
+        "iso_url": "{{ user `iso` }}",
+        "iso_checksum": "sha256:{{ user `checksum` }}",
+        "output_directory": "vbox",
+        "vm_name": "Alpine",
+        "ssh_username": "{{ user `username` }}",
+        "ssh_password": "{{ user `password` }}",
+        "http_directory": "httpd",
+        "disk_size": "20000",
+        "memory": "1024",
+        "shutdown_command": "/sbin/poweroff",
+        "ssh_wait_timeout": "8m",
+        "ssh_handshake_attempts": "200",
+        "boot_wait": "10s",
+        "boot_command": [
+          "root<enter><wait>",
+          "ifconfig eth0 up && udhcpc -i eth0<enter><wait5>",
+          "wget http://{{ .HTTPIP }}:{{ .HTTPPort }}/answers<enter><wait>",
+          "setup-apkrepos -1<enter><wait5>",
+          "setup-alpine -f answers<enter><wait5>",
+          "{{ user `password` }}<enter><wait>",
+          "{{ user `password` }}<enter><wait5>",
+          "<wait>y<enter><wait1m20s>",
+          "rc-service sshd stop<enter>",
+          "mount /dev/vg0/lv_root /mnt<enter>",
+          "echo 'PermitRootLogin yes' >> /mnt/etc/ssh/sshd_config<enter>",
+          "umount /mnt<enter>",
+          "reboot<enter>"
+        ]
+      },
+      {
+        "type": "qemu",
+        "iso_url": "{{ user `iso` }}",
+        "iso_checksum": "sha256:{{ user `checksum` }}",
+        "output_directory": "qemu",
+        "qemu_binary": "/usr/bin/kvm",
+        "display": "none",
+        "format": "qcow2",
+        "accelerator": "kvm",
+        "vm_name": "Ubuntu",
+        "ssh_username": "{{ user `username` }}",
+        "ssh_password": "{{ user `password` }}",
+        "ssh_port": 22,
+        "ssh_wait_timeout": "20m",
+        "net_device": "virtio-net",
+        "disk_interface": "virtio",
+        "disk_size": "50000",
+        "memory": "2048",
+        "http_directory": "httpd",
+        "vnc_bind_address": "0.0.0.0",
+        "vnc_port_min": 5915,
+        "vnc_port_max": 5920,
+        "boot_wait": "2s",
+        "ssh_handshake_attempts": "200",
+        "boot_command": [
+          "root<enter><wait>",
+          "ifconfig eth0 up && udhcpc -i eth0<enter><wait5>",
+          "wget http://{{ .HTTPIP }}:{{ .HTTPPort }}/httpd/answers<enter><wait>",
+          "setup-alpine -f answers<enter><wait5>",
+          "vagrant<enter><wait>",
+          "vagrant<enter><wait5>",
+          "<wait>y<enter><wait10>",
+          "rc-service sshd stop<enter>",
+          "mount /dev/vg0/lv_root /mnt<enter>",
+          "echo 'PermitRootLogin yes' >> /mnt/etc/ssh/sshd_config<enter>",
+          "umount /mnt<enter>",
+          "reboot<enter>"
+        ],
+        "shutdown_command": "/sbin/poweroff"
+      }
+    ],
+    "provisioners" : [
+      {
+        "type": "shell",
+        "scripts" : [
+          "scripts/01_init.sh"
+        ]
+      }
+    ],
+    "post-processors" : [
+      {
+        "type": "vagrant",
+        "keep_input_artifact": true,
+        "provider_override": "virtualbox"
+      }
+    ]
+  }
